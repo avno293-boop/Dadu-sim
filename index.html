@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Simulator & Prediksi 9 Dadu</title>
+    <style>
+        /* CSS: Desain Visual (ditingkatkan, responsif) */
+        :root{
+            --bg:#1a1a2e;
+            --card:#16213e;
+            --accent:#48dbfb;
+            --muted:#bdc3c7;
+            --primary:#e94560;
+            --secondary:#0f3460;
+            --gold:#f1c40f;
+        }
+
+        html,body{height:100%}
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            background-color: var(--bg);
+            color: #ecf0f1;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 720px;
+            background: var(--card);
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+        }
+
+        header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+        h1 { margin: 0; color: var(--accent); font-size:1.4rem; display:flex;align-items:center;gap:8px }
+
+        .controls {
+            display:flex;
+            gap:8px;
+            align-items:center;
+            flex-wrap:wrap;
+        }
+
+        .controls label{font-size:0.85rem;color:var(--muted)}
+        .controls input[type="number"]{
+            width:72px;padding:8px;border-radius:8px;border:none;background:rgba(255,255,255,0.04);color:inherit;
+        }
+        .controls .small{font-size:0.85rem}
+
+        .dice-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin: 18px 0;
+            perspective: 1000px;
+            justify-items:center;
+        }
+
+        /* Responsive: make dice grid adapt for fewer columns on small screens */
+        @media (max-width:420px){
+            .dice-grid{grid-template-columns: repeat(3, 1fr); gap:10px}
+        }
+        @media (max-width:340px){
+            .dice-grid{grid-template-columns: repeat(3, 1fr); gap:8px}
+        }
+
+        .dice {
+            width: 80px;
+            height: 80px;
+            background: white;
+            color: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.25rem;
+            font-weight: bold;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            margin: 12px 0;
+            background: rgba(255,255,255,0.03);
+            padding: 12px;
+            border-radius: 10px;
+        }
+
+        .stat-box { font-size: 0.78rem; color: var(--muted); text-align:center }
+        .stat-box .count { display: block; font-size: 1.05rem; color: var(--gold); font-weight: bold; }
+        .stat-box .pct { font-size:0.75rem;color:rgba(255,255,255,0.6) }
+
+        .total-display {
+            font-size: 1.1rem;
+            margin: 8px 0 12px 0;
+            padding: 10px;
+            border-top: 1px solid rgba(15,52,96,0.6);
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:10px;
+        }
+
+        button {
+            padding: 12px 14px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            border-radius: 10px;
+            transition: 0.2s;
+            color: #fff;
+            background: var(--secondary);
+        }
+
+        .btn-roll { background-color: var(--primary); }
+        .btn-roll:hover { transform: scale(1.02); background:#ff4d6d; }
+        .btn-clear { background-color: #0f2a46; color: var(--muted); }
+        .btn-export { background: #2ecc71; }
+        .btn-small { padding:8px 10px; font-size:0.9rem }
+
+        .history-section {
+            margin-top: 16px;
+            text-align: left;
+            border-top: 1px solid rgba(15,52,96,0.6);
+            padding-top: 12px;
+        }
+
+        #history-list {
+            list-style: none;
+            padding: 0;
+            max-height: 170px;
+            overflow-y: auto;
+            font-size: 0.86rem;
+        }
+
+        #history-list li {
+            padding: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+            display: flex;
+            justify-content: space-between;
+            gap:8px;
+            align-items:center;
+        }
+
+        .muted-small{font-size:0.78rem;color:var(--muted)}
+
+        @keyframes roll {
+            0% { transform: rotate(0deg) scale(0.6); opacity: 0; }
+            100% { transform: rotate(360deg) scale(1); opacity: 1; }
+        }
+
+        /* focus styles for accessibility */
+        button:focus, input:focus { outline: 3px solid rgba(72,219,251,0.18); outline-offset:2px }
+    </style>
+</head>
+<body>
+
+<div class="container" role="main">
+    <header>
+        <h1>🎲 Dadu 9 Online</h1>
+
+        <div class="controls" aria-hidden="false">
+            <label class="small" for="dice-count">Jumlah dadu
+                <input id="dice-count" type="number" min="1" max="20" value="9" aria-label="Jumlah dadu" />
+            </label>
+
+            <label class="small" title="Animasi" for="use-anim">
+                <input id="use-anim" type="checkbox" checked /> Animasi
+            </label>
+
+            <button id="btn-export" class="btn-export btn-small" title="Ekspor statistik & riwayat">Ekspor CSV</button>
+        </div>
+    </header>
+
+    <div id="dice-container" class="dice-grid" aria-live="polite" aria-label="Area dadu">
+    </div>
+
+    <div class="total-display">
+        <div>Total Skor: <strong id="total-score" style="color:var(--accent)" aria-live="polite">0</strong></div>
+        <div class="muted-small">Rata-rata teoritis: <span id="theory-mean">—</span></div>
+    </div>
+
+    <div class="stats-grid" aria-label="Statistik wajah dadu">
+        <div class="stat-box">1 <span class="count" id="count-1">0</span><span class="pct" id="pct-1">0%</span></div>
+        <div class="stat-box">2 <span class="count" id="count-2">0</span><span class="pct" id="pct-2">0%</span></div>
+        <div class="stat-box">3 <span class="count" id="count-3">0</span><span class="pct" id="pct-3">0%</span></div>
+        <div class="stat-box">4 <span class="count" id="count-4">0</span><span class="pct" id="pct-4">0%</span></div>
+        <div class="stat-box">5 <span class="count" id="count-5">0</span><span class="pct" id="pct-5">0%</span></div>
+        <div class="stat-box">6 <span class="count" id="count-6">0</span><span class="pct" id="pct-6">0%</span></div>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <button class="btn-roll" id="btn-roll">KOCOK</button>
+        <button class="btn-clear" id="btn-clear">Reset Data</button>
+    </div>
+
+    <div class="history-section">
+        <h3>Riwayat (terbaru 10)</h3>
+        <ul id="history-list" aria-live="polite" aria-label="Riwayat lemparan"></ul>
+    </div>
+</div>
+
+<script>
+    // JS: Logika Aplikasi (dengan persistence, ekspor, dan konfigurasi)
+    const STORAGE_KEY_STATS = 'nineDiceStats_v1';
+    const STORAGE_KEY_HISTORY = 'nineDiceHistory_v1';
+    const STORAGE_KEY_CONFIG = 'nineDiceConfig_v1';
+    const MAX_DISPLAY_HISTORY = 10;
+    const MAX_SAVED_HISTORY = 200;
+
+    // default state
+    let globalStats = {1:0,2:0,3:0,4:0,5:0,6:0};
+    let history = []; // {rolls:[], total: , ts:ISO}
+    let config = {diceCount:9, useAnim:true};
+
+    // elements
+    const diceContainer = document.getElementById('dice-container');
+    const totalScoreElement = document.getElementById('total-score');
+    const historyList = document.getElementById('history-list');
+    const diceCountInput = document.getElementById('dice-count');
+    const useAnimInput = document.getElementById('use-anim');
+    const btnRoll = document.getElementById('btn-roll');
+    const btnClear = document.getElementById('btn-clear');
+    const btnExport = document.getElementById('btn-export');
+    const theoryMeanEl = document.getElementById('theory-mean');
+
+    // load from localStorage
+    function loadState(){
+        try {
+            const s = localStorage.getItem(STORAGE_KEY_STATS);
+            const h = localStorage.getItem(STORAGE_KEY_HISTORY);
+            const c = localStorage.getItem(STORAGE_KEY_CONFIG);
+            if(s) globalStats = JSON.parse(s);
+            if(h) history = JSON.parse(h);
+            if(c) config = Object.assign(config, JSON.parse(c));
+        } catch(e){ console.warn('Gagal load state', e) }
+        diceCountInput.value = config.diceCount;
+        useAnimInput.checked = config.useAnim;
+        refreshUI();
+    }
+
+    function saveState(){
+        try {
+            localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(globalStats));
+            localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(history.slice(-MAX_SAVED_HISTORY)));
+            localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
+        } catch(e){ console.warn('Gagal save state', e) }
+    }
+
+    // helper random roll
+    function rollOne() { return Math.floor(Math.random()*6)+1; }
+
+    // roll with current config
+    function rollDice(count = config.diceCount) {
+        const useAnim = config.useAnim;
+        const currentRolls = [];
+        let total = 0;
+
+        // clear display first for animation clarity
+        diceContainer.innerHTML='';
+
+        for (let i=0;i<count;i++){
+            const v = rollOne();
+            currentRolls.push(v);
+            total += v;
+            globalStats[v] = (globalStats[v] || 0) + 1;
+
+            const die = document.createElement('div');
+            die.className = 'dice';
+            die.innerText = v;
+            if(useAnim) die.style.animation = 'roll 0.45s ease-out';
+            diceContainer.appendChild(die);
+        }
+
+        // update history
+        const entry = { rolls: currentRolls, total, ts: new Date().toISOString(), diceCount: count };
+        history.push(entry);
+
+        // trim saved history to keep localStorage bounded
+        if(history.length > MAX_SAVED_HISTORY) history = history.slice(-MAX_SAVED_HISTORY);
+
+        totalScoreElement.innerText = total;
+        refreshUI();
+        saveState();
+    }
+
+    function updateStatDisplay(){
+        const totalRolled = Object.values(globalStats).reduce((a,b)=>a+b,0);
+        for(let i=1;i<=6;i++){
+            document.getElementById(`count-${i}`).innerText = globalStats[i] || 0;
+            const pct = totalRolled ? ((globalStats[i]||0)/totalRolled*100).toFixed(1) : '0.0';
+            document.getElementById(`pct-${i}`).innerText = `${pct}%`;
+        }
+    }
+
+    function updateHistoryList(){
+        historyList.innerHTML = '';
+        // show latest MAX_DISPLAY_HISTORY entries
+        const lastItems = history.slice(-MAX_DISPLAY_HISTORY).reverse();
+        lastItems.forEach(item=>{
+            const li = document.createElement('li');
+            const left = document.createElement('div');
+            left.className='muted-small';
+            left.innerText = `[${item.rolls.join(', ')}]`;
+            const right = document.createElement('div');
+            right.style.fontWeight='700';
+            right.innerText = `Σ ${item.total}`;
+            const ts = document.createElement('div');
+            ts.className='muted-small';
+            ts.style.marginLeft='8px';
+            ts.style.fontSize='0.75rem';
+            ts.innerText = new Date(item.ts).toLocaleString();
+            li.appendChild(left);
+            const mid = document.createElement('div');
+            mid.style.display='flex';
+            mid.style.alignItems='center';
+            mid.style.gap='8px';
+            mid.appendChild(right);
+            mid.appendChild(ts);
+            li.appendChild(mid);
+            historyList.appendChild(li);
+        });
+
+        if(history.length===0){
+            const li = document.createElement('li');
+            li.className='muted-small';
+            li.inner
